@@ -39,8 +39,12 @@ export default class RealmRobot {
     }
 
     static reduce(mod, state, action) {
-        const { keyPath, pkValue, newValue } = action.payload;
-        return state.setIn(keyPath.shift().push(pkValue).toArray(), newValue);
+        const { keyPath, primaryKey, items } = action.payload;
+        return state.withMutations(newState => {
+            items.forEach(item => {
+                newState.setIn(keyPath.shift().push(item.get(primaryKey)), item);
+            });
+        });
     }
 
     /**
@@ -143,24 +147,34 @@ export default class RealmRobot {
     }
 
     requestData(schemaEntity, value) {
-        this.updateLock = true;
-        const rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(schemaEntity.realmSchema.primaryKey + ' = "' + value + '"');
-        if (rows.length > 0) {
-            const entity = convertObjectAsImmutable(rows[0], schemaEntity);
-            this.links.forEach(link => {
-                if (link.schemaEntity.equals(schemaEntity)) {
-                    this.store.dispatch({
-                        type: REALM_UDPATE_STATE,
-                        payload: {
-                            mod: link.keyPath.get(0),
-                            keyPath: link.keyPath,
-                            pkValue: value,
-                            newValue: entity,
-                        }
-                    })
-                }
-            })
+        if (value === undefined || (value instanceof Array && value.length == 0)) {
+            return;
         }
+        this.updateLock = true;
+        let rows = null;
+        if (value instanceof Array) {
+            rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(value.map(it => {
+                return schemaEntity.realmSchema.primaryKey + ' = "' + it + '"'
+            }).join(" OR "));
+        }
+        else {
+            rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(schemaEntity.realmSchema.primaryKey + ' = "' + value + '"');
+        }
+        this.links.forEach(link => {
+            if (link.schemaEntity.equals(schemaEntity)) {
+                this.store.dispatch({
+                    type: REALM_UDPATE_STATE,
+                    payload: {
+                        mod: link.keyPath.get(0),
+                        keyPath: link.keyPath,
+                        primaryKey: schemaEntity.realmSchema.primaryKey,
+                        items: rows.map(row => {
+                            return convertObjectAsImmutable(row, schemaEntity);
+                        }),
+                    }
+                });
+            }
+        })
         this.updateLock = false;
     }
 

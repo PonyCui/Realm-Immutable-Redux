@@ -68,11 +68,17 @@ export default class realmImmutableRedux extends Component {
               user.set("age", 18);
               user.set("cars", List(["粤A8CV14", "粤A942YY"]));
             })));
+            store.dispatch(updateUser(UserEntity.withMutations((user) => {
+              user.set("id", "11");
+              user.set("username", "十一");
+              user.set("age", 11);
+              user.set("cars", List(["粤A111111", "粤AXXXXXX"]));
+            })));
           }}>
             <Text style={styles.instructions}>Add User</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => {
-            this.robot.requestData(UserEntity, "10");
+            this.robot.requestData(UserEntity, ["10", "11"]);
           }}>
             <Text style={styles.instructions}>Request User</Text>
           </TouchableOpacity>

@@ -1282,11 +1282,11 @@ var realmImmutableRedux = function (_Component) {
 
       _store2.default.subscribe(function () {
         _this2.setState({
-          user: _store2.default.getState().getIn(["test", "userByID", "10"])
+          user: _store2.default.getState().getIn(["test", "userByID", "11"])
         });
       });
       this.setState({
-        user: _store2.default.getState().getIn(["test", "userByID", "10"])
+        user: _store2.default.getState().getIn(["test", "userByID", "11"])
       });
     }
   }, {
@@ -1307,6 +1307,12 @@ var realmImmutableRedux = function (_Component) {
                   user.set("age", 18);
                   user.set("cars", (0, _immutable.List)(["粤A8CV14", "粤A942YY"]));
                 })));
+                _store2.default.dispatch((0, _action.updateUser)(_schema.UserEntity.withMutations(function (user) {
+                  user.set("id", "11");
+                  user.set("username", "十一");
+                  user.set("age", 11);
+                  user.set("cars", (0, _immutable.List)(["粤A111111", "粤AXXXXXX"]));
+                })));
               } },
             _react2.default.createElement(
               _reactNative.Text,
@@ -1317,7 +1323,7 @@ var realmImmutableRedux = function (_Component) {
           _react2.default.createElement(
             _reactNative.TouchableOpacity,
             { onPress: function onPress() {
-                _this3.robot.requestData(_schema.UserEntity, "10");
+                _this3.robot.requestData(_schema.UserEntity, ["10", "11"]);
               } },
             _react2.default.createElement(
               _reactNative.Text,
@@ -55790,10 +55796,14 @@ var RealmRobot = function () {
         value: function reduce(mod, state, action) {
             var _action$payload = action.payload,
                 keyPath = _action$payload.keyPath,
-                pkValue = _action$payload.pkValue,
-                newValue = _action$payload.newValue;
+                primaryKey = _action$payload.primaryKey,
+                items = _action$payload.items;
 
-            return state.setIn(keyPath.shift().push(pkValue).toArray(), newValue);
+            return state.withMutations(function (newState) {
+                items.forEach(function (item) {
+                    newState.setIn(keyPath.shift().push(item.get(primaryKey)), item);
+                });
+            });
         }
     }]);
 
@@ -55825,6 +55835,7 @@ var RealmRobot = function () {
                 schema: this.links.map(function (element) {
                     var elementSchema = {
                         name: element.schemaEntity.realmSchema.name,
+                        primaryKey: element.schemaEntity.realmSchema.primaryKey,
                         properties: babelHelpers.extends({}, element.schemaEntity.realmSchema.properties)
                     };
                     for (var aKey in elementSchema.properties) {
@@ -55884,24 +55895,33 @@ var RealmRobot = function () {
         value: function requestData(schemaEntity, value) {
             var _this2 = this;
 
-            this.updateLock = true;
-            var rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(schemaEntity.realmSchema.primaryKey + ' = "' + value + '"');
-            if (rows.length > 0) {
-                var entity = convertObjectAsImmutable(rows[0], schemaEntity);
-                this.links.forEach(function (link) {
-                    if (link.schemaEntity.equals(schemaEntity)) {
-                        _this2.store.dispatch({
-                            type: REALM_UDPATE_STATE,
-                            payload: {
-                                mod: link.keyPath.get(0),
-                                keyPath: link.keyPath,
-                                pkValue: value,
-                                newValue: entity
-                            }
-                        });
-                    }
-                });
+            if (value === undefined || value instanceof Array && value.length == 0) {
+                return;
             }
+            this.updateLock = true;
+            var rows = null;
+            if (value instanceof Array) {
+                rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(value.map(function (it) {
+                    return schemaEntity.realmSchema.primaryKey + ' = "' + it + '"';
+                }).join(" OR "));
+            } else {
+                rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(schemaEntity.realmSchema.primaryKey + ' = "' + value + '"');
+            }
+            this.links.forEach(function (link) {
+                if (link.schemaEntity.equals(schemaEntity)) {
+                    _this2.store.dispatch({
+                        type: REALM_UDPATE_STATE,
+                        payload: {
+                            mod: link.keyPath.get(0),
+                            keyPath: link.keyPath,
+                            primaryKey: schemaEntity.realmSchema.primaryKey,
+                            items: rows.map(function (row) {
+                                return convertObjectAsImmutable(row, schemaEntity);
+                            })
+                        }
+                    });
+                }
+            });
             this.updateLock = false;
         }
     }]);

@@ -9,6 +9,10 @@ export const UserEntity = Map({
     username: "",
     age: 0,
     cars: List(),
+    settings: Map({
+        openDoor: true,
+        allowPush: false,
+    }),
 });
 
 UserEntity.realmSchema = {
@@ -19,6 +23,7 @@ UserEntity.realmSchema = {
         username: "string",
         age: "int",
         cars: "list",
+        settings: "map",
     },
 };
 

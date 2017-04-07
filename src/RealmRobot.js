@@ -5,6 +5,8 @@ const REALM_UDPATE_STATE = "REALM_UDPATE_STATE"
 
 import {
     List,
+    Map,
+    fromJS,
 } from 'immutable'
 
 function convertImmutableAsObject(value, schema) {
@@ -12,7 +14,12 @@ function convertImmutableAsObject(value, schema) {
     for (let aKey in object) {
         if (object[aKey] instanceof List) {
             if (schema.properties[aKey] === "list") {
-                object[aKey] = JSON.stringify(object[aKey].toArray());
+                object[aKey] = JSON.stringify(object[aKey].toJSON());
+            }
+        }
+        else if (object[aKey] instanceof Map) {
+            if (schema.properties[aKey] === "map") {
+                object[aKey] = JSON.stringify(object[aKey].toJSON());
             }
         }
     }
@@ -22,8 +29,8 @@ function convertImmutableAsObject(value, schema) {
 function convertObjectAsImmutable(object, schemaEntity) {
     return schemaEntity.withMutations((newEntity) => {
         for (var aKey in schemaEntity.realmSchema.properties) {
-            if (schemaEntity.realmSchema.properties[aKey] === "list") {
-                newEntity.set(aKey, List(JSON.parse(object[aKey])));
+            if (schemaEntity.realmSchema.properties[aKey] === "list" || schemaEntity.realmSchema.properties[aKey] === "map") {
+                newEntity.set(aKey, fromJS(JSON.parse(object[aKey])));
             }
             else {
                 newEntity.set(aKey, object[aKey]);
@@ -98,7 +105,7 @@ export default class RealmRobot {
                     properties: { ...element.schemaEntity.realmSchema.properties },
                 };
                 for (var aKey in elementSchema.properties) {
-                    if (elementSchema.properties[aKey] === "list") {
+                    if (elementSchema.properties[aKey] === "list" || elementSchema.properties[aKey] === "map") {
                         elementSchema.properties[aKey] = "string";
                     }
                 }
@@ -128,15 +135,7 @@ export default class RealmRobot {
                         return;
                     }
                     newValues.forEach((value, primaryKey) => {
-                        if (oldValues === undefined) {
-                            this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
-                        }
-                        else if (oldValues.get(primaryKey) !== undefined) {
-                            if (!oldValues.get(primaryKey).equals(value)) {
-                                this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
-                            }
-                        }
-                        else {
+                        if (oldValues === undefined || oldValues.get(primaryKey) === undefined || !oldValues.get(primaryKey).equals(value)) {
                             this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                         }
                     });

@@ -1245,11 +1245,11 @@ var _store2 = babelHelpers.interopRequireDefault(_store);
 
 var _schema = require(445                   ); // 445 = ./sample/test/schema
 
-var _action = require(468                   ); // 468 = ./sample/test/action
+var _action = require(446                   ); // 446 = ./sample/test/action
 
 var _immutable = require(439        ); // 439 = immutable
 
-var _RealmRobot = require(446               ); // 446 = ./src/RealmRobot
+var _RealmRobot = require(447               ); // 447 = ./src/RealmRobot
 
 var _RealmRobot2 = babelHelpers.interopRequireDefault(_RealmRobot);
 
@@ -1282,11 +1282,11 @@ var realmImmutableRedux = function (_Component) {
 
       _store2.default.subscribe(function () {
         _this2.setState({
-          user: _store2.default.getState().getIn(["test", "userByID", "11"])
+          user: _store2.default.getState().getIn(["test", "userByID", "10"])
         });
       });
       this.setState({
-        user: _store2.default.getState().getIn(["test", "userByID", "11"])
+        user: _store2.default.getState().getIn(["test", "userByID", "10"])
       });
     }
   }, {
@@ -55685,9 +55685,9 @@ __d(/* realmImmutableRedux/sample/test/reducer.js */function(global, require, mo
 
 var _schema = require(445       ); // 445 = ./schema
 
-var _action = require(468       ); // 468 = ./action
+var _action = require(446       ); // 446 = ./action
 
-var _RealmRobot = require(446                   ); // 446 = ../../src/RealmRobot
+var _RealmRobot = require(447                   ); // 447 = ../../src/RealmRobot
 
 var _RealmRobot2 = babelHelpers.interopRequireDefault(_RealmRobot);
 
@@ -55719,7 +55719,11 @@ var UserEntity = exports.UserEntity = (0, _immutable.Map)({
     id: "_",
     username: "",
     age: 0,
-    cars: (0, _immutable.List)()
+    cars: (0, _immutable.List)(),
+    settings: (0, _immutable.Map)({
+        openDoor: true,
+        allowPush: false
+    })
 });
 
 UserEntity.realmSchema = {
@@ -55729,7 +55733,8 @@ UserEntity.realmSchema = {
         id: "string",
         username: "string",
         age: "int",
-        cars: "list"
+        cars: "list",
+        settings: "map"
     }
 };
 
@@ -55750,14 +55755,14 @@ var updateUser = exports.updateUser = function updateUser(userEntity) {
         }
     };
 };
-}, 468, null, "realmImmutableRedux/sample/test/action.js");
+}, 446, null, "realmImmutableRedux/sample/test/action.js");
 __d(/* realmImmutableRedux/src/RealmRobot.js */function(global, require, module, exports) {Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
 var _immutable = require(439        ); // 439 = immutable
 
-var Realm = require(447    ); // 447 = realm
+var Realm = require(448    ); // 448 = realm
 
 var REALM_UDPATE_STATE = "REALM_UDPATE_STATE";
 
@@ -55766,7 +55771,11 @@ function convertImmutableAsObject(value, schema) {
     for (var aKey in object) {
         if (object[aKey] instanceof _immutable.List) {
             if (schema.properties[aKey] === "list") {
-                object[aKey] = JSON.stringify(object[aKey].toArray());
+                object[aKey] = JSON.stringify(object[aKey].toJSON());
+            }
+        } else if (object[aKey] instanceof _immutable.Map) {
+            if (schema.properties[aKey] === "map") {
+                object[aKey] = JSON.stringify(object[aKey].toJSON());
             }
         }
     }
@@ -55776,8 +55785,8 @@ function convertImmutableAsObject(value, schema) {
 function convertObjectAsImmutable(object, schemaEntity) {
     return schemaEntity.withMutations(function (newEntity) {
         for (var aKey in schemaEntity.realmSchema.properties) {
-            if (schemaEntity.realmSchema.properties[aKey] === "list") {
-                newEntity.set(aKey, (0, _immutable.List)(JSON.parse(object[aKey])));
+            if (schemaEntity.realmSchema.properties[aKey] === "list" || schemaEntity.realmSchema.properties[aKey] === "map") {
+                newEntity.set(aKey, (0, _immutable.fromJS)(JSON.parse(object[aKey])));
             } else {
                 newEntity.set(aKey, object[aKey]);
             }
@@ -55839,7 +55848,7 @@ var RealmRobot = function () {
                         properties: babelHelpers.extends({}, element.schemaEntity.realmSchema.properties)
                     };
                     for (var aKey in elementSchema.properties) {
-                        if (elementSchema.properties[aKey] === "list") {
+                        if (elementSchema.properties[aKey] === "list" || elementSchema.properties[aKey] === "map") {
                             elementSchema.properties[aKey] = "string";
                         }
                     }
@@ -55875,13 +55884,7 @@ var RealmRobot = function () {
                             return;
                         }
                         newValues.forEach(function (value, primaryKey) {
-                            if (oldValues === undefined) {
-                                _this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
-                            } else if (oldValues.get(primaryKey) !== undefined) {
-                                if (!oldValues.get(primaryKey).equals(value)) {
-                                    _this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
-                                }
-                            } else {
+                            if (oldValues === undefined || oldValues.get(primaryKey) === undefined || !oldValues.get(primaryKey).equals(value)) {
                                 _this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                             }
                         });
@@ -55929,7 +55932,7 @@ var RealmRobot = function () {
 }();
 
 exports.default = RealmRobot;
-}, 446, null, "realmImmutableRedux/src/RealmRobot.js");
+}, 447, null, "realmImmutableRedux/src/RealmRobot.js");
 __d(/* realm/lib/index.js */function(global, require, module, exports) {
 
 'use strict';
@@ -55989,7 +55992,7 @@ switch (getContext()) {
 
     case 'chromedebugger':
     case 'vscodedebugger':
-        realmConstructor = require(448        ).default; // 448 = ./browser
+        realmConstructor = require(449        ).default; // 449 = ./browser
         break;
 }
 
@@ -55997,10 +56000,10 @@ if (!realmConstructor) {
     throw new Error('Missing Realm constructor. Did you run "react-native link realm"? Please see https://realm.io/docs/react-native/latest/#missing-realm-constructor for troubleshooting');
 }
 
-require(466           )(realmConstructor); // 466 = ./extensions
+require(467           )(realmConstructor); // 467 = ./extensions
 
 module.exports = realmConstructor;
-}, 447, null, "realm/lib/index.js");
+}, 448, null, "realm/lib/index.js");
 __d(/* realm/lib/browser/index.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56011,41 +56014,41 @@ Object.defineProperty(exports, "__esModule", {
 
 var _reactNative = require(45            ); // 45 = react-native
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _collections = require(450            ); // 450 = ./collections
+var _collections = require(451            ); // 451 = ./collections
 
 var collections = babelHelpers.interopRequireWildcard(_collections);
 
-var _lists = require(454      ); // 454 = ./lists
+var _lists = require(455      ); // 455 = ./lists
 
 var _lists2 = babelHelpers.interopRequireDefault(_lists);
 
-var _results = require(455        ); // 455 = ./results
+var _results = require(456        ); // 456 = ./results
 
 var _results2 = babelHelpers.interopRequireDefault(_results);
 
-var _objects = require(456        ); // 456 = ./objects
+var _objects = require(457        ); // 457 = ./objects
 
 var objects = babelHelpers.interopRequireWildcard(_objects);
 
-var _user = require(457     ); // 457 = ./user
+var _user = require(458     ); // 458 = ./user
 
 var _user2 = babelHelpers.interopRequireDefault(_user);
 
-var _session = require(458        ); // 458 = ./session
+var _session = require(459        ); // 459 = ./session
 
 var _session2 = babelHelpers.interopRequireDefault(_session);
 
-var _rpc = require(452    ); // 452 = ./rpc
+var _rpc = require(453    ); // 453 = ./rpc
 
 var rpc = babelHelpers.interopRequireWildcard(_rpc);
 
-var _util = require(451     ); // 451 = ./util
+var _util = require(452     ); // 452 = ./util
 
 var util = babelHelpers.interopRequireWildcard(_util);
 
-var _userMethods = require(459              ); // 459 = ../user-methods
+var _userMethods = require(460              ); // 460 = ../user-methods
 
 var _NativeModules$Realm = _reactNative.NativeModules.Realm,
     debugHosts = _NativeModules$Realm.debugHosts,
@@ -56222,7 +56225,7 @@ for (var i = 0, len = debugHosts.length; i < len; i++) {
         throw new Error('Realm failed to connect to the embedded debug server inside the app. ' + 'If attempting to use Chrome debugging from a device, ensure the device is ' + 'reachable on the same network as this machine.');
     }
 }
-}, 448, null, "realm/lib/browser/index.js");
+}, 449, null, "realm/lib/browser/index.js");
 __d(/* realm/lib/browser/constants.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56250,7 +56253,7 @@ var propTypes = exports.propTypes = {};
         enumerable: true
     });
 });
-}, 449, null, "realm/lib/browser/constants.js");
+}, 450, null, "realm/lib/browser/constants.js");
 __d(/* realm/lib/browser/collections.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56264,11 +56267,11 @@ exports.clearMutationListeners = clearMutationListeners;
 exports.fireMutationListeners = fireMutationListeners;
 exports.createCollection = createCollection;
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _util = require(451     ); // 451 = ./util
+var _util = require(452     ); // 452 = ./util
 
-var _rpc = require(452    ); // 452 = ./rpc
+var _rpc = require(453    ); // 453 = ./rpc
 
 var mutationListeners = {};
 
@@ -56385,7 +56388,7 @@ function createCollection(prototype, realmId, info, _mutable) {
 
     return new Proxy(collection, traps);
 }
-}, 450, null, "realm/lib/browser/collections.js");
+}, 451, null, "realm/lib/browser/collections.js");
 __d(/* realm/lib/browser/util.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56398,11 +56401,11 @@ exports.createMethod = createMethod;
 exports.getterForProperty = getterForProperty;
 exports.setterForProperty = setterForProperty;
 
-var _collections = require(450            ); // 450 = ./collections
+var _collections = require(451            ); // 451 = ./collections
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _rpc = require(452    ); // 452 = ./rpc
+var _rpc = require(453    ); // 453 = ./rpc
 
 var rpc = babelHelpers.interopRequireWildcard(_rpc);
 function createMethods(prototype, type, methodNames, mutates) {
@@ -56456,7 +56459,7 @@ function setterForProperty(name) {
         }
     };
 }
-}, 451, null, "realm/lib/browser/util.js");
+}, 452, null, "realm/lib/browser/util.js");
 __d(/* realm/lib/browser/rpc.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56475,11 +56478,11 @@ exports.getAllUsers = getAllUsers;
 exports.clearTestState = clearTestState;
 exports.deserialize = deserialize;
 
-var _base = require(453       ); // 453 = ./base64
+var _base = require(454       ); // 454 = ./base64
 
 var base64 = babelHelpers.interopRequireWildcard(_base);
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
 var idKey = _constants.keys.id,
     _realmKey = _constants.keys.realm;
@@ -56725,7 +56728,7 @@ function sendRequest(command, data) {
 
     return response.result;
 }
-}, 452, null, "realm/lib/browser/rpc.js");
+}, 453, null, "realm/lib/browser/rpc.js");
 __d(/* realm/lib/browser/base64.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56803,7 +56806,7 @@ function encode(data) {
             return base64;
     }
 }
-}, 453, null, "realm/lib/browser/base64.js");
+}, 454, null, "realm/lib/browser/base64.js");
 __d(/* realm/lib/browser/lists.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56813,13 +56816,13 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.createList = createList;
 
-var _collections = require(450            ); // 450 = ./collections
+var _collections = require(451            ); // 451 = ./collections
 
 var _collections2 = babelHelpers.interopRequireDefault(_collections);
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _util = require(451     ); // 451 = ./util
+var _util = require(452     ); // 452 = ./util
 
 var List = function (_Collection) {
     babelHelpers.inherits(List, _Collection);
@@ -56841,7 +56844,7 @@ exports.default = List;
 function createList(realmId, info) {
     return (0, _collections.createCollection)(List.prototype, realmId, info, true);
 }
-}, 454, null, "realm/lib/browser/lists.js");
+}, 455, null, "realm/lib/browser/lists.js");
 __d(/* realm/lib/browser/results.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56851,13 +56854,13 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.createResults = createResults;
 
-var _collections = require(450            ); // 450 = ./collections
+var _collections = require(451            ); // 451 = ./collections
 
 var _collections2 = babelHelpers.interopRequireDefault(_collections);
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _util = require(451     ); // 451 = ./util
+var _util = require(452     ); // 452 = ./util
 
 var Results = function (_Collection) {
     babelHelpers.inherits(Results, _Collection);
@@ -56878,7 +56881,7 @@ exports.default = Results;
 function createResults(realmId, info) {
     return (0, _collections.createCollection)(Results.prototype, realmId, info);
 }
-}, 455, null, "realm/lib/browser/results.js");
+}, 456, null, "realm/lib/browser/results.js");
 __d(/* realm/lib/browser/objects.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56891,9 +56894,9 @@ exports.createObject = createObject;
 exports.registerConstructors = registerConstructors;
 exports.typeForConstructor = typeForConstructor;
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _util = require(451     ); // 451 = ./util
+var _util = require(452     ); // 452 = ./util
 
 var registeredConstructors = {};
 var registeredRealmPaths = {};
@@ -56959,7 +56962,7 @@ function typeForConstructor(realmId, constructor) {
 
     return null;
 }
-}, 456, null, "realm/lib/browser/objects.js");
+}, 457, null, "realm/lib/browser/objects.js");
 __d(/* realm/lib/browser/user.js */function(global, require, module, exports) {
 
 'use strict';
@@ -56969,11 +56972,11 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.createUser = createUser;
 
-var _rpc = require(452    ); // 452 = ./rpc
+var _rpc = require(453    ); // 453 = ./rpc
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _util = require(451     ); // 451 = ./util
+var _util = require(452     ); // 452 = ./util
 
 var User = function () {
     function User() {
@@ -57010,7 +57013,7 @@ function createUser(realmId, info) {
 
     return userProxy;
 }
-}, 457, null, "realm/lib/browser/user.js");
+}, 458, null, "realm/lib/browser/user.js");
 __d(/* realm/lib/browser/session.js */function(global, require, module, exports) {
 
 'use strict';
@@ -57020,11 +57023,11 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.createSession = createSession;
 
-var _constants = require(449          ); // 449 = ./constants
+var _constants = require(450          ); // 450 = ./constants
 
-var _util = require(451     ); // 451 = ./util
+var _util = require(452     ); // 452 = ./util
 
-var _rpc = require(452    ); // 452 = ./rpc
+var _rpc = require(453    ); // 453 = ./rpc
 
 var Session = function Session() {
     babelHelpers.classCallCheck(this, Session);
@@ -57052,12 +57055,12 @@ function createSession(realmId, info) {
 
     return sessionProxy;
 }
-}, 458, null, "realm/lib/browser/session.js");
+}, 459, null, "realm/lib/browser/session.js");
 __d(/* realm/lib/user-methods.js */function(global, require, module, exports) {
 
 'use strict';
 
-var AuthError = require(460       ).AuthError; // 460 = ./errors
+var AuthError = require(461       ).AuthError; // 461 = ./errors
 
 function node_require(module) {
     return require(module);
@@ -57074,7 +57077,7 @@ function checkTypes(args, types) {
 
 var performFetch = typeof fetch === 'undefined' ? node_require('node-fetch') : fetch;
 
-var url_parse = require(461        ); // 461 = url-parse
+var url_parse = require(462        ); // 462 = url-parse
 
 var postHeaders = {
     'content-type': 'application/json;charset=utf-8',
@@ -57254,7 +57257,7 @@ module.exports = {
             url.set('pathname', '/~/__management');
 
             return new this.constructor._realmConstructor({
-                schema: require(465                  ), // 465 = ./management-schema
+                schema: require(466                  ), // 466 = ./management-schema
                 sync: {
                     user: this,
                     url: url.href
@@ -57263,7 +57266,7 @@ module.exports = {
         }
     }
 };
-}, 459, null, "realm/lib/user-methods.js");
+}, 460, null, "realm/lib/user-methods.js");
 __d(/* realm/lib/errors.js */function(global, require, module, exports) {
 
 'use strict';
@@ -57277,12 +57280,12 @@ AuthError.__proto__ = Error;
 AuthError.prototype.__proto__ = Error.prototype;
 
 exports['AuthError'] = AuthError;
-}, 460, null, "realm/lib/errors.js");
+}, 461, null, "realm/lib/errors.js");
 __d(/* url-parse/index.js */function(global, require, module, exports) {'use strict';
 
-var required = require(462            ), // 462 = requires-port
-    lolcation = require(463          ), // 463 = ./lolcation
-    qs = require(464             ), // 464 = querystringify
+var required = require(463            ), // 463 = requires-port
+    lolcation = require(464          ), // 464 = ./lolcation
+    qs = require(465             ), // 465 = querystringify
     protocolre = /^([a-z][a-z0-9.+-]*:)?(\/\/)?([\S\s]*)/i;
 
 var rules = [['#', 'hash'], ['?', 'query'], ['/', 'pathname'], ['@', 'auth', 1], [NaN, 'host', undefined, 1, 1], [/:(\d+)$/, 'port', undefined, 1], [NaN, 'hostname', undefined, 1, 1]];
@@ -57512,7 +57515,7 @@ URL.location = lolcation;
 URL.qs = qs;
 
 module.exports = URL;
-}, 461, null, "url-parse/index.js");
+}, 462, null, "url-parse/index.js");
 __d(/* requires-port/index.js */function(global, require, module, exports) {'use strict';
 
 module.exports = function required(port, protocol) {
@@ -57542,7 +57545,7 @@ module.exports = function required(port, protocol) {
 
   return port !== 0;
 };
-}, 462, null, "requires-port/index.js");
+}, 463, null, "requires-port/index.js");
 __d(/* url-parse/lolcation.js */function(global, require, module, exports) {'use strict';
 
 var slashes = /^[A-Za-z][A-Za-z0-9+-.]*:\/\//;
@@ -57552,7 +57555,7 @@ var ignore = { hash: 1, query: 1 },
 
 module.exports = function lolcation(loc) {
   loc = loc || global.location || {};
-  URL = URL || require(461 ); // 461 = ./
+  URL = URL || require(462 ); // 462 = ./
 
   var finaldestination = {},
       type = typeof loc,
@@ -57578,7 +57581,7 @@ module.exports = function lolcation(loc) {
 
   return finaldestination;
 };
-}, 463, null, "url-parse/lolcation.js");
+}, 464, null, "url-parse/lolcation.js");
 __d(/* querystringify/index.js */function(global, require, module, exports) {'use strict';
 
 var has = Object.prototype.hasOwnProperty;
@@ -57611,7 +57614,7 @@ function querystringify(obj, prefix) {
 
 exports.stringify = querystringify;
 exports.parse = querystring;
-}, 464, null, "querystringify/index.js");
+}, 465, null, "querystringify/index.js");
 __d(/* realm/lib/management-schema.js */function(global, require, module, exports) {
 
 'use strict';
@@ -57660,7 +57663,7 @@ module.exports = [{
     },
     primaryKey: 'id'
 }];
-}, 465, null, "realm/lib/management-schema.js");
+}, 466, null, "realm/lib/management-schema.js");
 __d(/* realm/lib/extensions.js */function(global, require, module, exports) {
 
 'use strict';
@@ -57679,7 +57682,7 @@ function setConstructorOnPrototype(klass) {
 }
 
 module.exports = function (realmConstructor) {
-    Object.defineProperties(realmConstructor.Collection.prototype, require(467                   )); // 467 = ./collection-methods
+    Object.defineProperties(realmConstructor.Collection.prototype, require(468                   )); // 468 = ./collection-methods
 
     setConstructorOnPrototype(realmConstructor.Collection);
     setConstructorOnPrototype(realmConstructor.List);
@@ -57687,12 +57690,12 @@ module.exports = function (realmConstructor) {
     setConstructorOnPrototype(realmConstructor.Object);
 
     if (realmConstructor.Sync) {
-        var userMethods = require(459             ); // 459 = ./user-methods
+        var userMethods = require(460             ); // 460 = ./user-methods
         Object.defineProperties(realmConstructor.Sync.User, getOwnPropertyDescriptors(userMethods.static));
         Object.defineProperties(realmConstructor.Sync.User.prototype, getOwnPropertyDescriptors(userMethods.instance));
         Object.defineProperty(realmConstructor.Sync.User, '_realmConstructor', { value: realmConstructor });
 
-        realmConstructor.Sync.AuthError = require(460       ).AuthError; // 460 = ./errors
+        realmConstructor.Sync.AuthError = require(461       ).AuthError; // 461 = ./errors
 
         if (realmConstructor.Sync.cleanup) {
             process.on('exit', realmConstructor.Sync.cleanup);
@@ -57745,7 +57748,7 @@ module.exports = function (realmConstructor) {
         configurable: true
     });
 };
-}, 466, null, "realm/lib/extensions.js");
+}, 467, null, "realm/lib/extensions.js");
 __d(/* realm/lib/collection-methods.js */function(global, require, module, exports) {
 
 'use strict';
@@ -57803,7 +57806,7 @@ Object.defineProperty(iteratorPrototype, typeof Symbol === 'function' ? Symbol.i
 });
 
 exports[typeof Symbol === 'function' ? Symbol.iterator : '@@iterator'] = exports.values;
-}, 467, null, "realm/lib/collection-methods.js");
+}, 468, null, "realm/lib/collection-methods.js");
 ;require(96);
 ;require(0);
 //# sourceMappingURL=index.ios.map

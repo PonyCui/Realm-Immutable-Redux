@@ -24,6 +24,10 @@ import {
   updateUser,
 } from './sample/test/action'
 
+import {
+  List
+} from 'immutable'
+
 import RealmRobot from './src/RealmRobot'
 
 export default class realmImmutableRedux extends Component {
@@ -58,7 +62,12 @@ export default class realmImmutableRedux extends Component {
       return (
         <View style={styles.container}>
           <TouchableOpacity onPress={() => {
-            store.dispatch(updateUser(UserEntity.set("id", "10").set("username", "Pony").set("age", 18)));
+            store.dispatch(updateUser(UserEntity.withMutations((user) => {
+              user.set("id", "10");
+              user.set("username", "Pony");
+              user.set("age", 18);
+              user.set("cars", List(["粤A8CV14", "粤A942YY"]));
+            })));
           }}>
             <Text style={styles.instructions}>Add User</Text>
           </TouchableOpacity>
@@ -73,10 +82,21 @@ export default class realmImmutableRedux extends Component {
     return (
       <View style={styles.container}>
         <Text style={styles.instructions}>
-          {this.state.user.get("username")}
+          Username: {this.state.user.get("username")}
+        </Text>
+        <Text style={styles.instructions}>
+          Age: {this.state.user.get("age")}
+        </Text>
+        <Text style={styles.instructions}>
+          Cars: {this.state.user.get("cars").join(", ")}
         </Text>
         <TouchableOpacity onPress={() => {
-          store.dispatch(updateUser(UserEntity.set("id", "10").set("username", "UED").set("age", 24)));
+          store.dispatch(updateUser(UserEntity.withMutations((user) => {
+            user.set("id", "10");
+            user.set("username", "UED");
+            user.set("age", 24);
+            user.set("cars", List(["粤O00001"]));
+          })));
         }}>
           <Text style={styles.instructions}>Change User</Text>
         </TouchableOpacity>

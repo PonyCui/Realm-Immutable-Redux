@@ -7,6 +7,31 @@ import {
     List,
 } from 'immutable'
 
+function convertImmutableAsObject(value, schema) {
+    let object = value.toObject();
+    for (let aKey in object) {
+        if (object[aKey] instanceof List) {
+            if (schema.properties[aKey] === "list") {
+                object[aKey] = JSON.stringify(object[aKey].toArray());
+            }
+        }
+    }
+    return object;
+}
+
+function convertObjectAsImmutable(object, schemaEntity) {
+    return schemaEntity.withMutations((newEntity) => {
+        for (var aKey in schemaEntity.realmSchema.properties) {
+            if (schemaEntity.realmSchema.properties[aKey] === "list") {
+                newEntity.set(aKey, List(JSON.parse(object[aKey])));
+            }
+            else {
+                newEntity.set(aKey, object[aKey]);
+            }
+        };
+    });
+}
+
 export default class RealmRobot {
 
     static shouldReduce(mod, state, action) {
@@ -63,7 +88,17 @@ export default class RealmRobot {
     start() {
         this.realm = new Realm(Object.assign({
             schema: this.links.map((element) => {
-                return element.schemaEntity.realmSchema;
+                let elementSchema = {
+                    name: element.schemaEntity.realmSchema.name,
+                    primaryKey: element.schemaEntity.realmSchema.primaryKey,
+                    properties: { ...element.schemaEntity.realmSchema.properties },
+                };
+                for (var aKey in elementSchema.properties) {
+                    if (elementSchema.properties[aKey] === "list") {
+                        elementSchema.properties[aKey] = "string";
+                    }
+                }
+                return elementSchema;
             })
         }, this.realmParams));
         this.setupObserver();
@@ -90,15 +125,15 @@ export default class RealmRobot {
                     }
                     newValues.forEach((value, primaryKey) => {
                         if (oldValues === undefined) {
-                            this.realm.create(schemaEntity.realmSchema.name, value.toObject(), true);
+                            this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                         }
                         else if (oldValues.get(primaryKey) !== undefined) {
                             if (!oldValues.get(primaryKey).equals(value)) {
-                                this.realm.create(schemaEntity.realmSchema.name, value.toObject(), true);
+                                this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                             }
                         }
                         else {
-                            this.realm.create(schemaEntity.realmSchema.name, value.toObject(), true);
+                            this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                         }
                     });
                 })
@@ -111,12 +146,7 @@ export default class RealmRobot {
         this.updateLock = true;
         const rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(schemaEntity.realmSchema.primaryKey + ' = "' + value + '"');
         if (rows.length > 0) {
-            const row = rows[0];
-            const entity = schemaEntity.withMutations((newEntity) => {
-                for (var aKey in schemaEntity.realmSchema.properties) {
-                    newEntity.set(aKey, row[aKey]);
-                };
-            });
+            const entity = convertObjectAsImmutable(rows[0], schemaEntity);
             this.links.forEach(link => {
                 if (link.schemaEntity.equals(schemaEntity)) {
                     this.store.dispatch({

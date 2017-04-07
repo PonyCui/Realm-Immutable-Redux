@@ -1247,6 +1247,8 @@ var _schema = require(445                   ); // 445 = ./sample/test/schema
 
 var _action = require(468                   ); // 468 = ./sample/test/action
 
+var _immutable = require(439        ); // 439 = immutable
+
 var _RealmRobot = require(446               ); // 446 = ./src/RealmRobot
 
 var _RealmRobot2 = babelHelpers.interopRequireDefault(_RealmRobot);
@@ -1299,7 +1301,12 @@ var realmImmutableRedux = function (_Component) {
           _react2.default.createElement(
             _reactNative.TouchableOpacity,
             { onPress: function onPress() {
-                _store2.default.dispatch((0, _action.updateUser)(_schema.UserEntity.set("id", "10").set("username", "Pony").set("age", 18)));
+                _store2.default.dispatch((0, _action.updateUser)(_schema.UserEntity.withMutations(function (user) {
+                  user.set("id", "10");
+                  user.set("username", "Pony");
+                  user.set("age", 18);
+                  user.set("cars", (0, _immutable.List)(["粤A8CV14", "粤A942YY"]));
+                })));
               } },
             _react2.default.createElement(
               _reactNative.Text,
@@ -1326,12 +1333,30 @@ var realmImmutableRedux = function (_Component) {
         _react2.default.createElement(
           _reactNative.Text,
           { style: styles.instructions },
+          'Username: ',
           this.state.user.get("username")
+        ),
+        _react2.default.createElement(
+          _reactNative.Text,
+          { style: styles.instructions },
+          'Age: ',
+          this.state.user.get("age")
+        ),
+        _react2.default.createElement(
+          _reactNative.Text,
+          { style: styles.instructions },
+          'Cars: ',
+          this.state.user.get("cars").join(", ")
         ),
         _react2.default.createElement(
           _reactNative.TouchableOpacity,
           { onPress: function onPress() {
-              _store2.default.dispatch((0, _action.updateUser)(_schema.UserEntity.set("id", "10").set("username", "UED").set("age", 24)));
+              _store2.default.dispatch((0, _action.updateUser)(_schema.UserEntity.withMutations(function (user) {
+                user.set("id", "10");
+                user.set("username", "UED");
+                user.set("age", 24);
+                user.set("cars", (0, _immutable.List)(["粤O00001"]));
+              })));
             } },
           _react2.default.createElement(
             _reactNative.Text,
@@ -55687,7 +55712,8 @@ var _immutable = require(439        ); // 439 = immutable
 var UserEntity = exports.UserEntity = (0, _immutable.Map)({
     id: "_",
     username: "",
-    age: 0
+    age: 0,
+    cars: (0, _immutable.List)()
 });
 
 UserEntity.realmSchema = {
@@ -55696,14 +55722,13 @@ UserEntity.realmSchema = {
     properties: {
         id: "string",
         username: "string",
-        age: "int"
+        age: "int",
+        cars: "list"
     }
 };
 
 var schema = exports.schema = (0, _immutable.Map)({
-    userByID: (0, _immutable.Map)({
-        "_": UserEntity
-    })
+    userByID: (0, _immutable.Map)()
 });
 }, 445, null, "realmImmutableRedux/sample/test/schema.js");
 __d(/* realmImmutableRedux/sample/test/action.js */function(global, require, module, exports) {Object.defineProperty(exports, "__esModule", {
@@ -55729,6 +55754,30 @@ var _immutable = require(439        ); // 439 = immutable
 var Realm = require(447    ); // 447 = realm
 
 var REALM_UDPATE_STATE = "REALM_UDPATE_STATE";
+
+function convertImmutableAsObject(value, schema) {
+    var object = value.toObject();
+    for (var aKey in object) {
+        if (object[aKey] instanceof _immutable.List) {
+            if (schema.properties[aKey] === "list") {
+                object[aKey] = JSON.stringify(object[aKey].toArray());
+            }
+        }
+    }
+    return object;
+}
+
+function convertObjectAsImmutable(object, schemaEntity) {
+    return schemaEntity.withMutations(function (newEntity) {
+        for (var aKey in schemaEntity.realmSchema.properties) {
+            if (schemaEntity.realmSchema.properties[aKey] === "list") {
+                newEntity.set(aKey, (0, _immutable.List)(JSON.parse(object[aKey])));
+            } else {
+                newEntity.set(aKey, object[aKey]);
+            }
+        };
+    });
+}
 
 var RealmRobot = function () {
     babelHelpers.createClass(RealmRobot, null, [{
@@ -55774,10 +55823,24 @@ var RealmRobot = function () {
         value: function start() {
             this.realm = new Realm(babelHelpers.extends({
                 schema: this.links.map(function (element) {
-                    return element.schemaEntity.realmSchema;
+                    var elementSchema = {
+                        name: element.schemaEntity.realmSchema.name,
+                        properties: babelHelpers.extends({}, element.schemaEntity.realmSchema.properties)
+                    };
+                    for (var aKey in elementSchema.properties) {
+                        if (elementSchema.properties[aKey] === "list") {
+                            elementSchema.properties[aKey] = "string";
+                        }
+                    }
+                    return elementSchema;
                 })
             }, this.realmParams));
             this.setupObserver();
+        }
+    }, {
+        key: 'stop',
+        value: function stop() {
+            this.observer && this.observer();
         }
     }, {
         key: 'setupObserver',
@@ -55785,7 +55848,7 @@ var RealmRobot = function () {
             var _this = this;
 
             this.oldState = this.store.getState();
-            this.store.subscribe(function () {
+            this.observer = this.store.subscribe(function () {
                 if (_this.updateLock === true) {
                     return;
                 }
@@ -55802,13 +55865,13 @@ var RealmRobot = function () {
                         }
                         newValues.forEach(function (value, primaryKey) {
                             if (oldValues === undefined) {
-                                _this.realm.create(schemaEntity.realmSchema.name, value.toObject(), true);
+                                _this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                             } else if (oldValues.get(primaryKey) !== undefined) {
                                 if (!oldValues.get(primaryKey).equals(value)) {
-                                    _this.realm.create(schemaEntity.realmSchema.name, value.toObject(), true);
+                                    _this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                                 }
                             } else {
-                                _this.realm.create(schemaEntity.realmSchema.name, value.toObject(), true);
+                                _this.realm.create(schemaEntity.realmSchema.name, convertImmutableAsObject(value, schemaEntity.realmSchema), true);
                             }
                         });
                     });
@@ -55824,12 +55887,7 @@ var RealmRobot = function () {
             this.updateLock = true;
             var rows = this.realm.objects(schemaEntity.realmSchema.name).filtered(schemaEntity.realmSchema.primaryKey + ' = "' + value + '"');
             if (rows.length > 0) {
-                var row = rows[0];
-                var entity = schemaEntity.withMutations(function (newEntity) {
-                    for (var aKey in schemaEntity.realmSchema.properties) {
-                        newEntity.set(aKey, row[aKey]);
-                    };
-                });
+                var entity = convertObjectAsImmutable(rows[0], schemaEntity);
                 this.links.forEach(function (link) {
                     if (link.schemaEntity.equals(schemaEntity)) {
                         _this2.store.dispatch({
